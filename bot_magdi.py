@@ -3,7 +3,6 @@ from telebot import types
 import sys
 import os
 
-# إعداد المسارات لربط قاعدة البيانات
 path = '/home/magdi160/Magdi_Portfolio'
 if path not in sys.path:
     sys.path.append(path)
@@ -11,20 +10,14 @@ if path not in sys.path:
 from core.database import SessionLocal
 from core.models import Project
 
-# التوكن والآيدي الخاص بك
 API_TOKEN = 'YOUR_BOT_TOKEN_HERE'
 MY_ID = YOUR_CHAT_ID_HERE
 
 bot = telebot.TeleBot(API_TOKEN)
 
-# دالة التحقق من الهوية
 def is_it_me(message):
-    if message.chat.id == MY_ID:
-        return True
-    bot.reply_to(message, "⚠️ عذراً مجدي، هذا البوت مؤمن.")
-    return False
+    return message.chat.id == MY_ID
 
-# لوحة التحكم الكاملة
 def main_keyboard():
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     btn1 = types.KeyboardButton('🚀 إضافة مشروع')
@@ -38,7 +31,7 @@ def main_keyboard():
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     if is_it_me(message):
-        bot.reply_to(message, "مرحباً يا مجدي! لوحة التحكم الكاملة جاهزة للعمل 🛠", reply_markup=main_keyboard())
+        bot.reply_to(message, "لوحة التحكم كاملة الآن يا مجدي! 🛠", reply_markup=main_keyboard())
 
 @bot.message_handler(func=lambda message: True)
 def handle_all_messages(message):
@@ -52,8 +45,7 @@ def handle_all_messages(message):
         db = SessionLocal()
         projects = db.query(Project).all()
         db.close()
-        res = "📋 **مشاريعك الحالية:**\n"
-        res += "\n".join([f"🆔 **{p.id}** | {p.title}" for p in projects])
+        res = "📋 **مشاريعك:**\n" + "\n".join([f"🆔 {p.id} | {p.title}" for p in projects])
         bot.send_message(message.chat.id, res if projects else "لا توجد مشاريع.")
 
     elif message.text == '❌ حذف مشروع':
@@ -65,42 +57,39 @@ def handle_all_messages(message):
         bot.register_next_step_handler(msg, process_edit_id)
 
     elif message.text == '📊 حالة السيرفر':
-        bot.reply_to(message, "السيرفر يعمل في الخلفية بنظام nohup ✅")
+        bot.reply_to(message, "السيرفر يعمل بكفاءة ✅")
 
-# --- دوال المعالجة ---
 def process_add(message):
-    title = message.text
     db = SessionLocal()
-    new_project = Project(title=title, description="مشروع جديد", tech_stack="Python", link="#", image_url="https://via.placeholder.com/300")
-    db.add(new_project)
+    new_p = Project(title=message.text, description="مشروع جديد", tech_stack="Python", link="#", image_url="https://via.placeholder.com/300")
+    db.add(new_p)
     db.commit()
     db.close()
-    bot.reply_to(message, f"✅ تم إضافة '{title}' بنجاح!", reply_markup=main_keyboard())
+    bot.reply_to(message, "✅ تم الإضافة!", reply_markup=main_keyboard())
 
 def process_delete(message):
     db = SessionLocal()
-    project = db.query(Project).filter(Project.id == message.text).first()
-    if project:
-        db.delete(project)
+    p = db.query(Project).filter(Project.id == message.text).first()
+    if p:
+        db.delete(p)
         db.commit()
-        bot.reply_to(message, "✅ تم الحذف بنجاح.")
+        bot.reply_to(message, "✅ تم الحذف.")
     else:
         bot.reply_to(message, "❌ الرقم غير موجود.")
     db.close()
 
 def process_edit_id(message):
-    project_id = message.text
+    p_id = message.text
     msg = bot.reply_to(message, "أرسل العنوان الجديد:")
-    bot.register_next_step_handler(msg, process_edit_final, project_id)
+    bot.register_next_step_handler(msg, process_edit_final, p_id)
 
-def process_edit_final(message, project_id):
+def process_edit_final(message, p_id):
     db = SessionLocal()
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if project:
-        project.title = message.text
+    p = db.query(Project).filter(Project.id == p_id).first()
+    if p:
+        p.title = message.text
         db.commit()
         bot.reply_to(message, "✅ تم التعديل.")
     db.close()
 
-print("البوت الكامل شغال...")
 bot.polling(none_stop=True)
