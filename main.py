@@ -1,23 +1,27 @@
-from fastapi import FastAPI, Request
-from fastapi.templating import Jinja2Templates
+from flask import Flask, render_template
+import os
+import sys
+
+# ضمان أن السيرفر يرى مجلد المشروع والمجلدات الفرعية
+path = '/home/magdi160/Magdi_Portfolio'
+if path not in sys.path:
+    sys.path.append(path)
+
 from core.database import SessionLocal
 from core.models import Project
 
-app = FastAPI()
-templates = Jinja2Templates(directory="templates")
+app = Flask(__name__, template_folder="templates")
 
-@app.get("/")
-def read_root(request: Request):
-    # فتح اتصال بقاعدة البيانات لقراءة المشاريع
+@app.route("/")
+def read_root():
     db = SessionLocal()
     try:
         projects = db.query(Project).all()
+        return render_template("index.html", projects=projects)
+    except Exception as e:
+        return f"خطأ في قاعدة البيانات أو القالب: {str(e)}"
     finally:
         db.close()
-    
-    # إرسال المشاريع إلى ملف الـ HTML
-    return templates.TemplateResponse("index.html", {"request": request, "projects": projects})
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    app.run()
